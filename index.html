@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="az">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Guess the Number</title>
+  <style>
+    body {
+      min-height: 100vh; display: grid; place-items: center; margin: 0;
+      background: radial-gradient(circle at 20% 20%, #1e293b, #0f172a);
+      font-family: Arial, sans-serif; color: #e5e7eb;
+    }
+    .card {
+      width: min(92vw, 380px);
+      background: rgba(30,41,59,.6); backdrop-filter: blur(8px);
+      border: 1px solid rgba(56,189,248,.25); border-radius: 16px;
+      padding: 24px; box-shadow: 0 12px 35px rgba(0,0,0,.35);
+    }
+    .topbar { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
+    #levelDisplay {
+      font-weight:700; color:#38bdf8; background:rgba(30,41,59,.6);
+      padding:6px 12px; border-radius:8px; border:1px solid rgba(56,189,248,.3);
+    }
+    .level-buttons { display:flex; gap:8px; }
+    button {
+      padding:10px 12px; border-radius:8px; border:none; cursor:pointer;
+      font-weight:600; transition:transform .06s ease, filter .2s ease;
+    }
+    button:active { transform:scale(.97); }
+    .btn-secondary { background:#64748b; color:#fff; }
+    .btn-primary { background:#38bdf8; color:#0b1220; }
+    .btn-danger { background:#ef4444; color:#fff; }
+    button:hover { filter:brightness(1.1); }
+    button:disabled { opacity:.55; cursor:not-allowed; }
+    h1 { margin:0 0 8px; font-size:22px; }
+    .sub { color:#94a3b8; margin-bottom:16px; }
+    .row { display:flex; gap:12px; margin-top:10px; }
+    input {
+      flex:1; padding:10px; border-radius:8px;
+      border:1px solid rgba(148,163,184,.4); background:rgba(15,23,42,.6);
+      color:#e5e7eb; font-size:16px;
+    }
+    .message {
+      margin-top:14px; padding:10px; border-radius:8px;
+      background:rgba(2,6,23,.45); border:1px dashed rgba(148,163,184,.35);
+      min-height:44px; font-size:16px;
+    }
+    .meta { display:flex; justify-content:space-between; margin-top:12px; font-size:14px; color:#cbd5e1; }
+    @media(max-width:480px){
+      .card{width:95vw;padding:16px;}
+      h1{font-size:19px;}
+      .sub,.message,.meta{font-size:14px;}
+      input,button{padding:8px;font-size:14px;}
+      #levelDisplay{font-size:14px;padding:4px 8px;}
+    }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <div class="topbar">
+      <span id="levelDisplay">Level: 1 / 10</span>
+      <div class="level-buttons">
+        <button id="prevLevel" class="btn-secondary">⮜</button>
+        <button id="nextLevel" class="btn-secondary" disabled>⮞</button>
+      </div>
+    </div>
+
+    <h1>Guess the Number</h1>
+    <p class="sub">Aralıq: <span id="range">1–100</span></p>
+
+    <div class="row">
+      <input id="guessInput" type="number" placeholder="Ədəd yaz" />
+      <button id="checkBtn" class="btn-primary">Yoxla</button>
+    </div>
+
+    <div id="message" class="message">Bir ədəd seç və Yoxla düyməsinə bas.</div>
+
+    <div class="meta">
+      <span id="attempts">Cəhd: 0 / 10</span>
+      <button id="resetBtn" class="btn-secondary">Reset raund</button>
+    </div>
+
+    <div class="meta">
+      <button id="resetAll" class="btn-danger">Sıfırla (Level 1)</button>
+    </div>
+  </main>
+
+  <script>
+    let tries = 0;
+    const maxTries = 10;
+    let currentLevel = Number(localStorage.getItem("level")) || 1;
+    const maxLevel = 10;
+    const baseRange = 100;
+    const rangeStep = 20;
+    let secret;
+    let completedLevels = JSON.parse(localStorage.getItem("completedLevels")) || [];
+
+    function getMaxRange() {
+      return baseRange + (currentLevel - 1) * rangeStep;
+    }
+
+    function setLevel(level) {
+      currentLevel = level;
+      localStorage.setItem("level", currentLevel);
+      document.getElementById("levelDisplay").textContent = `Level: ${currentLevel} / ${maxLevel}`;
+      document.getElementById("range").textContent = `1–${getMaxRange()}`;
+      resetRound();
+    }
+
+    function newSecret() {
+      secret = Math.floor(Math.random() * getMaxRange()) + 1;
+    }
+
+    function resetRound() {
+      newSecret();
+      tries = 0;
+      document.getElementById("attempts").textContent = `Cəhd: ${tries} / ${maxTries}`;
+      document.getElementById("message").textContent = "Yeni raund başladı!";
+      document.getElementById("checkBtn").disabled = false;
+      document.getElementById("nextLevel").disabled = !completedLevels.includes(currentLevel);
+      document.getElementById("guessInput").value = "";
+    }
+
+    function clicked() {
+      const guess = Number(document.getElementById("guessInput").value);
+      const message = document.getElementById("message");
+      const attempts = document.getElementById("attempts");
+
+      if (!guess) { message.textContent = "Ədəd yaz."; return; }
+      if (guess < 1 || guess > getMaxRange()) { message.textContent = `Aralıq: 1–${getMaxRange()}`; return; }
+
+      tries++;
+      attempts.textContent = `Cəhd: ${tries} / ${maxTries}`;
+
+      if (guess === secret) {
+        message.textContent = "Tapdın 🎉 Level tamamlandı!";
+        if (!completedLevels.includes(currentLevel)) {
+          completedLevels.push(currentLevel);
+          localStorage.setItem("completedLevels", JSON.stringify(completedLevels));
+        }
+        document.getElementById("nextLevel").disabled = currentLevel >= maxLevel ? true : false;
+        document.getElementById("checkBtn").disabled = true;
+        return;
+      }
+
+      message.textContent = guess > secret ? "Çox böyük!" : "Çox kiçik!";
+
+      if (tries >= maxTries) {
+        message.textContent = `Uduzdun 😵 Sirr ədəd ${secret} idi.`;
+        document.getElementById("checkBtn").disabled = true;
+      }
+    }
+
+    document.getElementById("checkBtn").onclick = clicked;
+    document.getElementById("resetBtn").onclick = resetRound;
+    document.getElementById("resetAll").onclick = () => {
+      completedLevels = [];
+      localStorage.setItem("completedLevels", JSON.stringify(completedLevels));
+      setLevel(1);
+    };
+    document.getElementById("prevLevel").onclick = () => {
+      if (currentLevel > 1) setLevel(currentLevel - 1);
+    };
+    document.getElementById("nextLevel").onclick = () => {
+      if (currentLevel < maxLevel && completedLevels.includes(currentLevel)) {
+        setLevel(currentLevel + 1);
+      }
+    };
+
+    setLevel(currentLevel);
+  </script>
+</body>
+</html>
